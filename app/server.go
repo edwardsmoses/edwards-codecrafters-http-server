@@ -41,9 +41,10 @@ func main() {
 	fmt.Println("Received data: ", string(data))
 	dataString := strings.Split(string(data), " ")
 
-	fmt.Println("Split data: ", dataString)
+	fmt.Println("Parsed Data -------------------")
 	fmt.Println("Method: ", dataString[0])
 	fmt.Println("Path: ", dataString[1])
+	fmt.Println("User Agent: ", dataString[4])
 
 	requestPath := strings.Split(dataString[1], "/")
 
@@ -57,7 +58,6 @@ func main() {
 			fmt.Println("Error writing to connection: ", err.Error())
 			os.Exit(1)
 		}
-
 	} else if dataString[0] == "GET" && slices.Contains(requestPath, "echo") {
 		fmt.Println("Secret: ", requestPath)
 
@@ -73,6 +73,29 @@ func main() {
 			fmt.Println("Error writing to connection: ", err.Error())
 			os.Exit(1)
 		}
+	} else if dataString[0] == "GET" && slices.Contains(requestPath, "user-agent") {
+
+		var userAgent string
+		for _, line := range strings.Split(string(data), "\r\n") {
+			if strings.HasPrefix(line, "User-Agent:") {
+				fmt.Println("Found User-Agent: ", line)
+				// Extract the User-Agent value after the "User-Agent: " prefix
+				userAgent = strings.TrimSpace(line[len("User-Agent:"):])
+				break
+			}
+		}
+
+		fmt.Println("Writing content: ", userAgent)
+
+		fmt.Println("Responding with 200 OK")
+		httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(userAgent), userAgent)
+		_, err := conn.Write([]byte(httpResponse))
+
+		if err != nil {
+			fmt.Println("Error writing to connection: ", err.Error())
+			os.Exit(1)
+		}
+
 	} else {
 		fmt.Println("Responding with 404 Not Found")
 		_, err = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
