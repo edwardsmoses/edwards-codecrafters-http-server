@@ -47,7 +47,18 @@ func main() {
 
 	requestPath := strings.Split(dataString[1], "/")
 
-	if dataString[0] == "GET" && (dataString[1] == "/" || slices.Contains(requestPath, "echo")) {
+	if dataString[0] == "GET" && dataString[1] == "/" {
+		fmt.Println("Responding with 200 OK")
+
+		httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\n\r\n")
+		_, err := conn.Write([]byte(httpResponse))
+
+		if err != nil {
+			fmt.Println("Error writing to connection: ", err.Error())
+			os.Exit(1)
+		}
+
+	} else if dataString[0] == "GET" && slices.Contains(requestPath, "echo") {
 		fmt.Println("Secret: ", requestPath)
 
 		fmt.Println("Responding with 200 OK")
@@ -60,7 +71,6 @@ func main() {
 			fmt.Println("Error writing to connection: ", err.Error())
 			os.Exit(1)
 		}
-
 	} else {
 		fmt.Println("Responding with 404 Not Found")
 		_, err = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
