@@ -62,7 +62,9 @@ func main() {
 		fmt.Println("Secret: ", requestPath)
 
 		fmt.Println("Responding with 200 OK")
-		content := strings.Join(requestPath[1:], "/")
+		content := strings.Join(requestPath[2:], "/")
+
+		fmt.Println("Writing content: ", content)
 
 		httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(content), content)
 		_, err := conn.Write([]byte(httpResponse))
