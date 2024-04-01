@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -38,16 +40,30 @@ func main() {
 	}
 
 	fmt.Println("Received data: ", string(data))
-
 	dataString := strings.Split(string(data), " ")
 
 	fmt.Println("Split data: ", dataString)
 	fmt.Println("Method: ", dataString[0])
 	fmt.Println("Path: ", dataString[1])
 
-	if dataString[0] == "GET" && dataString[1] == "/" {
+	requestPath := strings.Split(dataString[1], "/")
+
+	if dataString[0] == "GET" && (dataString[1] == "/" || slices.Contains(requestPath, "echo")) {
+		fmt.Println("Secret: ", requestPath)
+
 		fmt.Println("Responding with 200 OK")
-		_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+		content := requestPath[2]
+		response := "HTTP/1.1 200 OK\r\n" +
+			"Content-Type: text/plain\r\n" +
+			"Content-Length: " + strconv.Itoa(len(content)) + "\r\n\r\n" +
+			content
+
+		_, err = conn.Write([]byte(response))
+		if err != nil {
+			fmt.Println("Error writing to connection: ", err.Error())
+			os.Exit(1)
+		}
+
 	} else {
 		fmt.Println("Responding with 404 Not Found")
 		_, err = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
