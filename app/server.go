@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -26,7 +27,32 @@ func main() {
 
 	fmt.Println("accepting connection", conn)
 
-	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	// create a new buffer to store the incoming data
+	data := make([]byte, 1024)
+
+	// read the incoming connection into the buffer
+	_, err = conn.Read(data)
+	if err != nil {
+		fmt.Println("Error reading data: ", err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println("Received data: ", string(data))
+
+	dataString := strings.Split(string(data), " ")
+
+	fmt.Println("Split data: ", dataString)
+	fmt.Println("Method: ", dataString[0])
+	fmt.Println("Path: ", dataString[1])
+
+	if dataString[0] == "GET" && dataString[1] == "/" {
+		fmt.Println("Responding with 200 OK")
+		_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	} else {
+		fmt.Println("Responding with 404 Not Found")
+		_, err = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+	}
+
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
 		os.Exit(1)
