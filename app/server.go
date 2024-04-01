@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -53,12 +52,9 @@ func main() {
 
 		fmt.Println("Responding with 200 OK")
 		content := requestPath[2]
-		response := "HTTP/1.1 200 OK\r\n" +
-			"Content-Type: text/plain\r\n" +
-			"Content-Length: " + strconv.Itoa(len(content)) + "\r\n\r\n" +
-			content
 
-		_, err = conn.Write([]byte(response))
+		_, err = conn.Write([]byte(fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length:%+v\r\n\r\n%v\r\n", len(content), content)))
+
 		if err != nil {
 			fmt.Println("Error writing to connection: ", err.Error())
 			os.Exit(1)
