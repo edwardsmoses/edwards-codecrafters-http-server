@@ -50,7 +50,7 @@ func main() {
 	if dataString[0] == "GET" && dataString[1] == "/" {
 		fmt.Println("Responding with 200 OK")
 
-		httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\n\r\n")
+		httpResponse := "HTTP/1.1 200 OK\r\n\r\n"
 		_, err := conn.Write([]byte(httpResponse))
 
 		if err != nil {
@@ -62,7 +62,7 @@ func main() {
 		fmt.Println("Secret: ", requestPath)
 
 		fmt.Println("Responding with 200 OK")
-		content := requestPath[2]
+		content := strings.Join(requestPath[1:], "/")
 
 		httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(content), content)
 		_, err := conn.Write([]byte(httpResponse))
