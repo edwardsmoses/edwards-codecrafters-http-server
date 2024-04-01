@@ -53,7 +53,8 @@ func main() {
 		fmt.Println("Responding with 200 OK")
 		content := requestPath[2]
 
-		_, err = conn.Write([]byte(fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length:%+v\r\n\r\n%v\r\n", len(content), content)))
+		httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(content), content)
+		_, err := conn.Write([]byte(httpResponse))
 
 		if err != nil {
 			fmt.Println("Error writing to connection: ", err.Error())
