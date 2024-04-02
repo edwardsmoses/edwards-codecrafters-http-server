@@ -65,7 +65,7 @@ func main() {
 			if dataString[0] == "GET" && dataString[1] == "/" {
 				fmt.Println("Responding with 200 OK")
 
-				httpResponse := "HTTP/1.1 200 OK\r\n\r\n"
+				httpResponse := "HTTP/1.1 200 OK\r\n\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\n Hi"
 				_, err := conn.Write([]byte(httpResponse))
 
 				if err != nil {
