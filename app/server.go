@@ -64,7 +64,7 @@ func main() {
 
 				fmt.Println("Writing content: ", content)
 
-				httpResponse := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nHi"
+				httpResponse := "HTTP/1.1 200 OK\r\n\r\n"
 
 				_, err := conn.Write([]byte(httpResponse))
 
