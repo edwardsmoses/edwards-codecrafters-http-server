@@ -1,122 +1,163 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"strconv"
+	"strings"
+
 	"net"
 	"os"
-	"slices"
-	"strings"
 )
 
-func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Println("Logs from your program will appear here!")
+const okResponseHead = "HTTP/1.1 200 OK"
+const crlf = "\r\n"
+const notFoundResponseHead = "HTTP/1.1 404 Not Found"
 
+func main() {
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
-		fmt.Println("Failed to bind to port 4221")
+		log.Println("Failed to bind to port 4221")
 		os.Exit(1)
 	}
 
-	defer l.Close()
-
-	fmt.Println("Listening to connections")
-
-	// limit the number of concurrent connections spawned using the goroutines
-	const maxConnections = 300
-	sem := make(chan struct{}, maxConnections)
+	defer func() {
+		err := l.Close()
+		if err != nil {
+			log.Println("Error closing listener: ", err.Error())
+			return
+		}
+	}()
 
 	for {
-		cn, err := l.Accept()
-
+		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection: ", err.Error())
-			continue // no exit
+			log.Println("Error accepting connection: ", err.Error())
+			continue
 		}
 
-		sem <- struct{}{}
-
-		go func(conn net.Conn) {
-			defer func() { <-sem }()
-			defer conn.Close()
-
-			// create a new buffer to store the incoming data
-			data := make([]byte, 1024)
-
-			// read the incoming connection into the buffer
-			_, err = conn.Read(data)
-			if err != nil {
-				fmt.Println("Error reading data: ", err.Error())
-			}
-
-			dataString := strings.Split(string(data), " ")
-
-			fmt.Println("Parsed Data -------------------")
-			fmt.Println("Method: ", dataString[0])
-			fmt.Println("Path: ", dataString[1])
-			fmt.Println("User Agent: ", dataString[4])
-
-			requestPath := strings.Split(dataString[1], "/")
-
-			if dataString[0] == "GET" && dataString[1] == "/" {
-				fmt.Println("Responding with 200 OK")
-				content := "Hi"
-
-				fmt.Println("Writing content: ", content)
-
-				httpResponse := "HTTP/1.1 200 OK\r\n\r\n"
-
-				_, err := conn.Write([]byte(httpResponse))
-
-				if err != nil {
-					fmt.Println("Error writing to connection: ", err.Error())
-				}
-			} else if dataString[0] == "GET" && slices.Contains(requestPath, "echo") {
-				fmt.Println("Secret: ", requestPath)
-
-				fmt.Println("Responding with 200 OK")
-				content := strings.Join(requestPath[2:], "/")
-
-				fmt.Println("Writing content: ", content)
-
-				httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(content), content)
-				_, err := conn.Write([]byte(httpResponse))
-
-				if err != nil {
-					fmt.Println("Error writing to connection: ", err.Error())
-				}
-			} else if dataString[0] == "GET" && slices.Contains(requestPath, "user-agent") {
-
-				var userAgent string
-				for _, line := range strings.Split(string(data), "\r\n") {
-					if strings.HasPrefix(line, "User-Agent:") {
-						fmt.Println("Found User-Agent: ", line)
-						// Extract the User-Agent value after the "User-Agent: " prefix
-						userAgent = strings.TrimSpace(line[len("User-Agent:"):])
-						break
-					}
-				}
-
-				fmt.Println("Writing content: ", userAgent)
-
-				fmt.Println("Responding with 200 OK")
-				httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(userAgent), userAgent)
-				_, err := conn.Write([]byte(httpResponse))
-
-				if err != nil {
-					fmt.Println("Error writing to connection: ", err.Error())
-				}
-
-			} else {
-				fmt.Println("Responding with 404 Not Found")
-				_, err = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-			}
-
-			if err != nil {
-				fmt.Println("Error writing to connection: ", err.Error())
-			}
-
-		}(cn)
-
+		go serve(conn)
 	}
+}
+
+func serve(conn net.Conn) {
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			log.Println("Error closing connection: ", err.Error())
+			return
+		}
+	}()
+
+	req, err := readConn(conn)
+	if err != nil {
+		log.Println("Error reading connection: ", err.Error())
+		return
+	}
+
+	startLine, headers, body := splitRequest(req)
+	method, path, version := splitStartLine(startLine)
+
+	handler(method, path, version, headers, body, conn)
+}
+
+func splitRequest(req string) (string, map[string]string, string) {
+	splitted := strings.Split(req, crlf+crlf)
+	startLine := strings.Split(splitted[0], crlf)[0]
+	headers := strings.Split(splitted[0], crlf)[1:]
+
+	headersMap := make(map[string]string)
+	for _, header := range headers {
+		splitted := strings.Split(header, ": ")
+		headersMap[splitted[0]] = splitted[1]
+	}
+
+	body := splitted[1]
+	return startLine, headersMap, body
+}
+
+func splitStartLine(startLine string) (string, string, string) {
+	splitted := strings.Split(startLine, " ")
+	return splitted[0], splitted[1], splitted[2]
+}
+
+func readConn(conn net.Conn) (string, error) {
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return "", err
+	}
+
+	return string(buf[:n]), nil
+}
+
+// func splitPath(path string) []string {
+// 	// splitPath only into 2 parts
+// 	// /echo/foo/bar to [echo, foo/bar]
+// 	ret := make([]string, 2)
+// 	splitted := strings.Split(path, "/")
+// 	ret[0] = splitted[1]
+// 	ret[1] = strings.Join(splitted[2:], "/")
+// 	return ret
+// }
+
+func handler(method, path, version string, headers map[string]string, body string, conn net.Conn) {
+	log.Println("Method: ", method)
+	log.Println("Path: ", path)
+	log.Println("Version: ", version)
+	log.Println("Headers: ", headers)
+	log.Println("Body: ", body)
+
+	if path == "/user-agent" {
+		responseBody := headers["User-Agent"]
+		conn.Write(buildResponse(
+			okResponseHead,
+			mergeMaps(contentLengthHeader(responseBody), map[string]string{"Content-Type": "text/plain"}),
+			responseBody,
+		))
+		return
+	}
+
+	if strings.HasPrefix(path, "/echo") {
+		responseBody := path[6:]
+		conn.Write(buildResponse(
+			okResponseHead,
+			mergeMaps(contentLengthHeader(responseBody), map[string]string{"Content-Type": "text/plain"}),
+			responseBody,
+		))
+		return
+	}
+
+	if path == "/" {
+		conn.Write(buildResponse(okResponseHead, nil, ""))
+		return
+	}
+
+	conn.Write(buildResponse(notFoundResponseHead, nil, ""))
+}
+
+func contentLengthHeader(body string) map[string]string {
+	return map[string]string{"Content-Length": strconv.Itoa(len(body))}
+}
+
+func buildResponse(
+	statusText string,
+	headers map[string]string,
+	body string,
+) []byte {
+	response := statusText + crlf
+	for key, value := range headers {
+		response += key + ": " + value + crlf
+	}
+	response += crlf
+	if body != "" {
+		response += body
+	}
+	return []byte(response)
+}
+
+func mergeMaps(map1, map2 map[string]string) map[string]string {
+	for key, value := range map2 {
+		map1[key] = value
+	}
+	return map1
 }
