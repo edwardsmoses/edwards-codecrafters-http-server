@@ -18,16 +18,27 @@ func main() {
 		os.Exit(1)
 	}
 
+	defer l.Close()
+
 	fmt.Println("Listening to connections")
 
-	for {
-		go func() {
+	// limit the number of concurrent connections spawned using the goroutines
+	const maxConnections = 50
+	sem := make(chan struct{}, maxConnections)
 
-			conn, err := l.Accept()
-			if err != nil {
-				fmt.Println("Error accepting connection: ", err.Error())
-				os.Exit(1)
-			}
+	for {
+		cn, err := l.Accept()
+
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			continue // no exit
+		}
+
+		sem <- struct{}{}
+
+		go func(conn net.Conn) {
+			defer func() { <-sem }()
+			defer conn.Close()
 
 			fmt.Println("accepting connection", conn)
 
@@ -38,7 +49,6 @@ func main() {
 			_, err = conn.Read(data)
 			if err != nil {
 				fmt.Println("Error reading data: ", err.Error())
-				os.Exit(1)
 			}
 
 			fmt.Println("Received data: ", string(data))
@@ -59,7 +69,6 @@ func main() {
 
 				if err != nil {
 					fmt.Println("Error writing to connection: ", err.Error())
-					os.Exit(1)
 				}
 			} else if dataString[0] == "GET" && slices.Contains(requestPath, "echo") {
 				fmt.Println("Secret: ", requestPath)
@@ -74,7 +83,6 @@ func main() {
 
 				if err != nil {
 					fmt.Println("Error writing to connection: ", err.Error())
-					os.Exit(1)
 				}
 			} else if dataString[0] == "GET" && slices.Contains(requestPath, "user-agent") {
 
@@ -96,7 +104,6 @@ func main() {
 
 				if err != nil {
 					fmt.Println("Error writing to connection: ", err.Error())
-					os.Exit(1)
 				}
 
 			} else {
@@ -106,8 +113,9 @@ func main() {
 
 			if err != nil {
 				fmt.Println("Error writing to connection: ", err.Error())
-				os.Exit(1)
 			}
-		}()
+
+		}(cn)
+
 	}
 }
