@@ -38,8 +38,15 @@ Note: This section is for stages 2 and beyond.
    to CodeCrafters. Test output will be streamed to your terminal.
 
 
-# Command to send multiple requests at once in parralel to our server
+# Testing ultiple requests 
+Command to send multiple requests at once in parralel to our server:
 
 ```bash
 seq 10 | xargs -I{} -P10 curl -v -X GET http://localhost:4221/echo/second
+```
+
+Another way:
+
+```bash
+oha http://localhost:4221
 ```

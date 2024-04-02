@@ -23,7 +23,7 @@ func main() {
 	fmt.Println("Listening to connections")
 
 	// limit the number of concurrent connections spawned using the goroutines
-	const maxConnections = 50
+	const maxConnections = 300
 	sem := make(chan struct{}, maxConnections)
 
 	for {
@@ -65,7 +65,12 @@ func main() {
 			if dataString[0] == "GET" && dataString[1] == "/" {
 				fmt.Println("Responding with 200 OK")
 
-				httpResponse := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 3\r\n\r\nHi"
+				fmt.Println("Responding with 200 OK")
+				content := "Hi"
+
+				fmt.Println("Writing content: ", content)
+
+				httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(content), content)
 				_, err := conn.Write([]byte(httpResponse))
 
 				if err != nil {
