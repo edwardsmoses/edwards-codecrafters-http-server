@@ -90,11 +90,19 @@ func processRequest(method, path string, headers map[string]string, conn net.Con
 }
 
 func sendResponse(conn net.Conn, statusLine string, headers map[string]string, body string) {
+	// Initialize headers map if it is nil
+	if headers == nil {
+		headers = make(map[string]string)
+	}
+
 	headers["Content-Length"] = strconv.Itoa(len(body))
 	response := statusLine + crlf
 	for key, value := range headers {
 		response += key + ": " + value + crlf
 	}
 	response += crlf + body
-	conn.Write([]byte(response))
+	_, err := conn.Write([]byte(response))
+	if err != nil {
+		fmt.Println("Error sending response:", err)
+	}
 }
