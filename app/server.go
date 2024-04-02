@@ -40,7 +40,8 @@ func main() {
 			defer func() { <-sem }()
 			defer conn.Close()
 
-			fmt.Println("accepting connection", conn)
+			fmt.Println("on token #", len(sem))
+			fmt.Println("we're accepting connection", conn, "-------------------")
 
 			// create a new buffer to store the incoming data
 			data := make([]byte, 1024)
