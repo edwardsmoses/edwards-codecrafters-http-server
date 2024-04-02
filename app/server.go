@@ -40,9 +40,6 @@ func main() {
 			defer func() { <-sem }()
 			defer conn.Close()
 
-			fmt.Println("on token #", len(sem))
-			fmt.Println("we're accepting connection", conn, "-------------------")
-
 			// create a new buffer to store the incoming data
 			data := make([]byte, 1024)
 
@@ -52,7 +49,6 @@ func main() {
 				fmt.Println("Error reading data: ", err.Error())
 			}
 
-			fmt.Println("Received data: ", string(data))
 			dataString := strings.Split(string(data), " ")
 
 			fmt.Println("Parsed Data -------------------")
@@ -64,13 +60,12 @@ func main() {
 
 			if dataString[0] == "GET" && dataString[1] == "/" {
 				fmt.Println("Responding with 200 OK")
-
-				fmt.Println("Responding with 200 OK")
 				content := "Hi"
 
 				fmt.Println("Writing content: ", content)
 
-				httpResponse := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(content), content)
+				httpResponse := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nHi"
+
 				_, err := conn.Write([]byte(httpResponse))
 
 				if err != nil {
