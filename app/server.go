@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -17,6 +18,7 @@ func main() {
 	fmt.Println("Listening to connections on port 4221")
 
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
+
 	if err != nil {
 		fmt.Println("Failed to bind to port 4221:", err)
 		os.Exit(1)
@@ -79,6 +81,32 @@ func processRequest(method, path string, headers map[string]string, conn net.Con
 		responseBody := path[len("/echo/"):]
 		sendResponse(conn, okResponseHead, map[string]string{"Content-Type": "text/plain"}, responseBody)
 		return
+	}
+
+	if strings.HasPrefix(path, "/files/") {
+		filePath := path[len("/files/"):]
+		fmt.Println("File path:", filePath)
+
+		dir := flag.String("directory", "", "The name of the directory")
+		flag.Parse()
+		fmt.Println("Directory:", *dir)
+
+		if *dir != "" {
+			filePath = *dir + filePath
+			fmt.Println("File path with directory:", filePath)
+
+			fileData, readErr := os.ReadFile(filePath)
+			if readErr != nil {
+				sendResponse(conn, notFoundResponseHead, nil, "")
+				return
+			} else {
+				content := string(fileData[:])
+				fmt.Println("File content:", content)
+				sendResponse(conn, okResponseHead, map[string]string{"Content-Type": "application/octet-stream"}, content)
+				return
+			}
+
+		}
 	}
 
 	if path == "/" {
