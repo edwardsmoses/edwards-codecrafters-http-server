@@ -14,8 +14,16 @@ const okResponseHead = "HTTP/1.1 200 OK"
 const notFoundResponseHead = "HTTP/1.1 404 Not Found"
 const crlf = "\r\n"
 
+var serverDir string
+
 func main() {
 	fmt.Println("Listening to connections on port 4221")
+
+	dir := flag.String("directory", "", "The name of the directory")
+	flag.Parse()
+
+	serverDir = *dir
+	fmt.Println("Server directory:", serverDir)
 
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 
@@ -87,12 +95,8 @@ func processRequest(method, path string, headers map[string]string, conn net.Con
 		filePath := path[len("/files/"):]
 		fmt.Println("File path:", filePath)
 
-		dir := flag.String("directory", "", "The name of the directory")
-		flag.Parse()
-		fmt.Println("Directory:", *dir)
-
-		if *dir != "" {
-			filePath = *dir + filePath
+		if serverDir != "" {
+			filePath = serverDir + filePath
 			fmt.Println("File path with directory:", filePath)
 
 			fileData, readErr := os.ReadFile(filePath)
