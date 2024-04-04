@@ -67,7 +67,9 @@ func handleConnection(conn net.Conn) {
 	}
 
 	method, path, _ := parseRequestLine(requestLine)
-	processRequest(method, path, headers, conn)
+
+	requestBody := parseRequestBody(reader, len(headers["Content-Length"]))
+	processRequest(method, path, headers, conn, requestBody)
 }
 
 func parseRequestLine(requestLine string) (method, path, version string) {
@@ -78,7 +80,18 @@ func parseRequestLine(requestLine string) (method, path, version string) {
 	return "", "", ""
 }
 
-func processRequest(method, path string, headers map[string]string, conn net.Conn) {
+func parseRequestBody(reader *bufio.Reader, contentLength int) string {
+	body := make([]byte, contentLength)
+	_, err := reader.Read(body)
+	if err != nil {
+		fmt.Println("Error reading body:", err)
+		return ""
+	}
+	return string(body)
+}
+
+func processRequest(method, path string, headers map[string]string, conn net.Conn, requestBody string) {
+
 	if path == "/user-agent" {
 		responseBody := headers["User-Agent"]
 		sendResponse(conn, okResponseHead, map[string]string{"Content-Type": "text/plain"}, responseBody)
@@ -91,7 +104,7 @@ func processRequest(method, path string, headers map[string]string, conn net.Con
 		return
 	}
 
-	if strings.HasPrefix(path, "/files/") {
+	if method == "GET" && strings.HasPrefix(path, "/files/") {
 		filePath := path[len("/files/"):]
 		fmt.Println("File path:", filePath)
 
@@ -110,6 +123,25 @@ func processRequest(method, path string, headers map[string]string, conn net.Con
 				return
 			}
 
+		}
+	}
+
+	if method == "POST" && strings.HasPrefix(path, "/files/") {
+		filePath := path[len("/files/"):]
+
+		if serverDir != "" {
+			filePath = serverDir + filePath
+			fmt.Println("File path with directory:", filePath)
+
+			reader := bufio.NewReader(conn)
+			body := make([]byte, len(headers["Content-Length"]))
+			_, err := reader.Read(body)
+			if err != nil {
+				fmt.Println("Error reading body:", err)
+				return
+			}
+
+			fmt.Println("files", method, path, headers, body)
 		}
 	}
 
