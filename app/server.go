@@ -11,6 +11,7 @@ import (
 )
 
 const okResponseHead = "HTTP/1.1 200 OK"
+const writeFilePOSTResponseHead = "HTTP/1.1 201 OK"
 const notFoundResponseHead = "HTTP/1.1 404 Not Found"
 const crlf = "\r\n"
 
@@ -68,7 +69,17 @@ func handleConnection(conn net.Conn) {
 
 	method, path, _ := parseRequestLine(requestLine)
 
-	requestBody := parseRequestBody(reader, len(headers["Content-Length"]))
+	//get the content length
+	contentLength, err := strconv.Atoi(headers["Content-Length"])
+	if err != nil {
+		fmt.Println("Error reading content length:", err)
+	}
+	var requestBody string
+	if err == nil {
+		requestBody = parseRequestBody(reader, contentLength)
+	} else {
+		requestBody = ""
+	}
 	processRequest(method, path, headers, conn, requestBody)
 }
 
@@ -81,6 +92,7 @@ func parseRequestLine(requestLine string) (method, path, version string) {
 }
 
 func parseRequestBody(reader *bufio.Reader, contentLength int) string {
+	fmt.Println("Content length:", contentLength)
 	body := make([]byte, contentLength)
 	_, err := reader.Read(body)
 	if err != nil {
@@ -131,17 +143,17 @@ func processRequest(method, path string, headers map[string]string, conn net.Con
 
 		if serverDir != "" {
 			filePath = serverDir + filePath
-			fmt.Println("File path with directory:", filePath)
 
-			reader := bufio.NewReader(conn)
-			body := make([]byte, len(headers["Content-Length"]))
-			_, err := reader.Read(body)
+			fmt.Println("saving this content in the file", requestBody, filePath)
+			err := os.WriteFile(filePath, []byte(requestBody), 0644) // 0644 is the permission - read and write
 			if err != nil {
-				fmt.Println("Error reading body:", err)
+				fmt.Println("Error writing file:", err)
+				sendResponse(conn, notFoundResponseHead, nil, "")
+				return
+			} else {
+				sendResponse(conn, writeFilePOSTResponseHead, nil, "")
 				return
 			}
-
-			fmt.Println("files", method, path, headers, body)
 		}
 	}
 
